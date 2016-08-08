@@ -1,9 +1,11 @@
-﻿using System;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using t1;
+﻿// Copyright (c) Microsoft. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 namespace UnitTest
 {
+    using System;
+    using Microsoft.VisualStudio.TestTools.UnitTesting;
+
     [TestClass]
     public class UnitTestOfStringView
     {
@@ -12,6 +14,93 @@ namespace UnitTest
         {
             StringView view = new StringView("1234567890");
             Assert.AreEqual(view.ToString(), "1234567890");
+
+            Assert.AreEqual(view.Substring(1, 2).ToString(), "23");
+        }
+
+        [TestMethod]
+        public void Test_Equals()
+        {
+            StringView view = new StringView("1234567890");
+            Assert.AreEqual(view, "1234567890");
+            Assert.AreEqual(view.Substring(0, 2), "12");
+            Assert.AreEqual(new StringView("123123", 0, 3), new StringView("234123123", 3, 3));
+            Assert.AreEqual(StringView.Empty, StringView.Empty);
+        }
+
+
+        static StringView[] splitExpectedArray = new StringView[]
+            {
+                new StringView("1"),
+                new StringView("2"),
+                new StringView("3"),
+                new StringView("4"),
+                new StringView("5"),
+                new StringView("6"),
+                new StringView("7"),
+                new StringView("8"),
+                new StringView("9"),
+                new StringView("0"),
+            };
+
+        [TestMethod]
+        public void Test_SplitByChar()
+        {
+            StringView view = new StringView("1,2,3,4,5,6,7,8,9,0");
+            var array = view.Split(',');
+            Assert.AreEqual(array.Length, 10);
+            for (int i = 0; i < array.Length; ++i)
+            {
+                Assert.AreEqual(array[i], splitExpectedArray[i]);
+            }
+        }
+
+        [TestMethod]
+        public void Test_SplitByCharArray()
+        {
+            StringView view = new StringView("1,2|3@4!5,6#7@8!9,0");
+            var array = view.Split(',', '|', '@', '!', '#');
+            Assert.AreEqual(array.Length, 10);
+            for (int i = 0; i < array.Length; ++i)
+            {
+                Assert.AreEqual(array[i], splitExpectedArray[i]);
+            }
+        }
+
+        [TestMethod]
+        public void Test_SplitByString()
+        {
+            StringView view = new StringView("1,2,3,4,5,6,7,8,9,0");
+            var array = view.Split(",");
+            Assert.AreEqual(array.Length, 10);
+            for (int i = 0; i < array.Length; ++i)
+            {
+                Assert.AreEqual(array[i], splitExpectedArray[i]);
+            }
+        }
+
+        [TestMethod]
+        public void Test_SplitByBlank()
+        {
+            StringView view = new StringView("1\t2\n3 4 5 6 7 8 9 0");
+            var array = view.Split((string[])null);
+            Assert.AreEqual(array.Length, 10);
+            for (int i = 0; i < array.Length; ++i)
+            {
+                Assert.AreEqual(array[i], splitExpectedArray[i]);
+            }
+        }
+
+        [TestMethod]
+        public void Test_SplitByStrings()
+        {
+            StringView view = new StringView("1,2|3@4!5,6#7@8!9,0");
+            var array = view.Split(",", "|", "@", "!", "#");
+            Assert.AreEqual(array.Length, 10);
+            for (int i = 0; i < array.Length; ++i)
+            {
+                Assert.AreEqual(array[i], splitExpectedArray[i]);
+            }
         }
 
         [TestMethod]

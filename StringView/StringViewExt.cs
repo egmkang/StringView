@@ -1,4 +1,7 @@
-﻿public static partial class Ext
+﻿// Copyright (c) Microsoft. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+
+public static partial class Ext
 {
     public unsafe static int ToInt32(this StringView view)
     {

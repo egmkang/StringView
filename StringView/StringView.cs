@@ -1,4 +1,7 @@
-﻿using System.Collections.Generic;
+﻿// Copyright (c) Microsoft. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+using System;
+using System.Runtime.CompilerServices;
 
 public unsafe struct StringView
 {
@@ -46,45 +49,47 @@ public unsafe struct StringView
         return false;
     }
 
-    public int IndexOf(char[] array, int start = 0)
+    public int IndexOf(char[] anyOf)
     {
-        if (array.Length == 1) return this.IndexOf(array[0], start);
+        return this.IndexOf(anyOf, 0);
+    }
+
+    public int IndexOf(char[] anyOf, int offset)
+    {
+        if (anyOf.Length == 1) return this.IndexOf(anyOf[0], offset);
 
         fixed (char* p = this.str)
         {
-            for (int i = start; i < length; ++i)
+            for (int i = offset; i < length; ++i)
             {
-                if (ArrayContains(array, p[this.offset + i])) return i;
+                if (ArrayContains(anyOf, p[this.offset + i])) return i;
             }
         }
 
         return -1;
     }
 
-    public int IndexOf(string s, int start = 0)
+    public int IndexOf(string s)
+    {
+        return this.IndexOf(s, 0);
+    }
+
+    public int IndexOf(string s, int offset)
     {
         int s1_length = this.str.Length;
         int s2_length = s.Length;
         fixed (char* p1 = this.str)
         {
-            fixed (char* p2 = s)
+            for (int i = offset; i < this.length; ++i)
             {
-                int index = this.IndexOf(p2[0], start);
-                while (index >= 0)
+                if (p1[this.offset + i] == s[0] &&
+                    (this.length - i) >= s.Length &&
+                    InternalCompareOrdinal(this.str, this.offset + i, s, 0, s.Length))
                 {
-                    if (s2_length > s1_length - this.offset - index)
-                        return -1;
-                    bool match = true;
-                    for (int i = 0; i < s2_length; ++i)
-                    {
-                        if (p1[this.offset + index + i] != p2[i]) { match = false; break; }
-                    }
-                    if (match) return index;
-
-                    index = this.IndexOf(p2[0], index + 1);
+                    return i;
                 }
-                return -1;
             }
+            return -1;
         }
     }
 
@@ -116,37 +121,149 @@ public unsafe struct StringView
 
     public StringView[] Split(char split)
     {
+        int length = this.length;
+        int[] posArray = new int[length];
+        int splitCount = MakeSplitIndexArray(split, posArray);
+
+        StringView[] ret = new StringView[splitCount + 1];
+        int count = 0;
+        int index = 0;
+        for (int i = 0; i < splitCount; ++i)
+        {
+            ret[count++] = this.Substring(index, posArray[i] - index);
+            index = posArray[i]+ 1;
+        }
+
+        if (index != length) ret[count++] = this.Substring(index, length - index);
+        return ret;
+    }
+
+    public StringView[] Split(params char[] split)
+    {
+        int length = this.length;
+        int[] posArray = new int[length];
+        int splitCount = MakeSplitIndexArray(split, posArray);
+
+        StringView[] ret = new StringView[splitCount + 1];
+        int count = 0;
+        int index = 0;
+        for (int i = 0; i < splitCount; ++i)
+        {
+            ret[count++] = this.Substring(index, posArray[i] - index);
+            index = posArray[i] + 1;
+        }
+
+        if (index != length) ret[count++] = this.Substring(index, length - index);
+        return ret;
+    }
+
+    public StringView[] Split(params string[] split)
+    {
+        int length = this.length;
+        int[] posArray = new int[length];
+        int[] lenArray = new int[length];
+        int splitCount = MakeSplitIndexArray(split, posArray, lenArray);
+
+        StringView[] ret = new StringView[splitCount + 1];
+        int count = 0;
+        int index = 0;
+        for (int i = 0; i < splitCount; ++i)
+        {
+            ret[count++] = this.Substring(index, posArray[i] - index);
+            index = posArray[i] + lenArray[i];
+        }
+
+        if (index != length) ret[count++] = this.Substring(index, length - index);
+        return ret;
+    }
+
+    private int MakeSplitIndexArray(char split, int[] posArray)
+    {
         fixed (char* p = this.str)
         {
-            int length = this.length;
             int splitCount = 0;
-            int[] posArray = new int[length];
-            for (int i = 0; i < length; ++i)
+            for (int i = 0; i < this.length; ++i)
             {
                 if (p[this.offset + i] == split) posArray[splitCount++] = i;
             }
+            return splitCount;
+        }
+    }
 
-            StringView[] ret = new StringView[splitCount + 1];
-            int count = 0;
-            int index = 0;
-            for (int i = 0; i < splitCount; ++i)
+    private int MakeSplitIndexArray(char[] split, int[] posArray)
+    {
+        fixed (char* p = this.str)
+        {
+            int splitCount = 0;
+
+            if (split == null || split.Length == 0)
             {
-                ret[count++] = this.Substring(index, posArray[i] - index);
-                index = posArray[i] + 1;
+                for (int i = 0; i < this.length; ++i)
+                {
+                    if (char.IsWhiteSpace(p[this.offset + i])) posArray[splitCount++] = i;
+                }
+                return splitCount;
             }
 
-            if (index != length) ret[count++] = this.Substring(index, length - index);
-
-            return ret;
+            for (int i = 0; i < this.length; ++i)
+            {
+                if (ArrayContains(split, p[this.offset + i])) posArray[splitCount++] = i;
+            }
+            return splitCount;
         }
+    }
+
+    private int MakeSplitIndexArray(string[] split, int[] posArray, int[] lenArray)
+    {
+        if (split == null || split.Length == 0)
+        {
+            int count = this.MakeSplitIndexArray((char[])null, posArray);
+            for (int i = 0; i < count; ++i)
+                lenArray[i] = 1;
+            return count;
+        }
+
+        fixed (char* p = this.str)
+        {
+            int splitCount = 0;
+            for (int i = 0; i < this.length; ++i)
+            {
+                foreach (var seperator in split)
+                {
+                    if (String.IsNullOrEmpty(seperator)) continue;
+
+                    if (p[this.offset + i] == seperator[0] && (this.length - i) >= seperator.Length)
+                    {
+                        if (InternalCompareOrdinal(this.str, this.offset + i, seperator, 0, seperator.Length))
+                        {
+                            posArray[splitCount] = i;
+                            lenArray[splitCount] = seperator.Length;
+                            splitCount++;
+                            i += seperator.Length - 1;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            return splitCount;
+        }
+    }
+
+    private static bool InternalCompareOrdinal(String strA, int indexA, String strB, int indexB, int count)
+    {
+        return new StringView(strA, indexA, count) == new StringView(strB, indexB, count);
     }
 
     public override bool Equals(object obj)
     {
         if (obj is StringView)
         {
-            StringView v = (StringView)obj;
-            return this.Equals(v);
+            return this.Equals((StringView)obj);
+        }
+        else if (obj is string)
+        {
+            return this.Equals((string)obj);
         }
         return false;
     }
@@ -164,18 +281,74 @@ public unsafe struct StringView
     private bool Equals(string s, int offset, int length)
     {
         if (length != this.length) return false;
-        for (int i = 0; i < length; ++i)
+        if (length == 0) return true;
+        if (object.ReferenceEquals(s, this.str) && offset == this.offset) return true;
+
+        fixed (char* p1 = this.str, p2 = s)
         {
-            if (this[i] != s[offset + i]) return false;
+            return EqualHelper(p1 + this.offset, p2 + offset, length);
         }
-        return true;
     }
+
+    public static bool operator ==(StringView a, StringView b)
+    {
+        return a.Equals(b);
+    }
+    public static bool operator !=(StringView a, StringView b)
+    {
+        return !a.Equals(b);
+    }
+
+    //Copy from .NET System.String.EqualsHelper
+    private static bool EqualHelper(char* p1, char* p2, int length)
+    {
+        int left = length;
+        if (sizeof(System.IntPtr) == 8)
+        {
+            if (*(int*)p1 != *(int*)2) return false;
+            left -= 2; p1 += 2; p2 += 2;
+
+            while (left >= 12)
+            {
+                if (*(long*)(p1 + 0) != *(long*)(p2 + 0)) goto RetFalse;
+                if (*(long*)(p1 + 4) != *(long*)(p2 + 4)) goto RetFalse;
+                if (*(long*)(p1 + 8) != *(long*)(p2 + 8)) goto RetFalse;
+                left -= 12; p1 += 12; p2 += 12;
+            }
+        }
+        else
+        {
+            while (left >= 10)
+            {
+                if (*(int*)(p1 + 0) != *(int*)(p2 + 0)) goto RetFalse;
+                if (*(int*)(p1 + 2) != *(int*)(p2 + 2)) goto RetFalse;
+                if (*(int*)(p1 + 4) != *(int*)(p2 + 4)) goto RetFalse;
+                if (*(int*)(p1 + 6) != *(int*)(p2 + 6)) goto RetFalse;
+                if (*(int*)(p1 + 8) != *(int*)(p2 + 8)) goto RetFalse;
+                left -= 10; p1 += 10; p2 += 10;
+            }
+        }
+
+        //StringView's string will not be end with '\0'
+        //so must scan by char, not int
+        while (left > 0)
+        {
+            if (p1[0] != p2[0]) goto RetFalse;
+            left -= 1; p1 += 1; p2 += 1;
+        }
+
+        return true;
+        RetFalse:
+        return false;
+    }
+
 
     internal static int CombineHashCodes(int h1, int h2)
     {
         return (((h1 << 5) + h1) ^ h2);
     }
 
+    //TODO: improve the performance
     public override int GetHashCode()
     {
         int hash_code = 0;
@@ -186,15 +359,28 @@ public unsafe struct StringView
         return hash_code;
     }
 
-    public int Length { get { return this.length; } }
 
+    /// <summary>
+    /// generate a string instance, which will copy the chars of the StringView
+    /// </summary>
+    /// <returns>a string</returns>
     public override string ToString()
     {
         return this.str.Substring(offset, length);
     }
-
+    
+    /// <summary>
+    /// the real string of the StringView
+    /// </summary>
     public string Original { get { return this.str; } }
+    /// <summary>
+    /// the first char index of the Original String
+    /// </summary>
     public int Offset { get { return this.offset; } }
+    /// <summary>
+    /// the length of the StringView
+    /// </summary>
+    public int Length { get { return this.length; } }
 
     private string str;
     private int offset;
