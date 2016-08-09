@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft. All rights reserved.
+﻿// Copyright (c) egmkang wang. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 namespace UnitTest
@@ -118,7 +118,7 @@ namespace UnitTest
             }
             catch (Exception e)
             {
-                Assert.IsTrue(e.Message.IndexOf("OutOfBound") >= 0);
+                Assert.IsTrue(e is ArgumentOutOfRangeException ? true : false);
             }
         }
 
@@ -152,6 +152,41 @@ namespace UnitTest
             Assert.AreEqual(view.IndexOf("90"), 8);
             Assert.AreEqual(view.IndexOf("901"), -1);
         }
+
+        [TestMethod]
+        public void Test_LastIndexOf_Char()
+        {
+            StringView view = new StringView("1234567890");
+            Assert.AreEqual(view.LastIndexOf('0'), view.Length - 1);
+            Assert.AreEqual(view.LastIndexOf('9'), view.Length - 2);
+            Assert.AreEqual(view.LastIndexOf('1'), 0);
+            Assert.AreEqual(view.LastIndexOf('-'), -1);
+        }
+
+        [TestMethod]
+        public void Test_LastIndexOf_Chars()
+        {
+            StringView view = new StringView("1234567890");
+
+            Assert.AreEqual(view.LastIndexOf('0', '9'), view.Length - 1);
+            Assert.AreEqual(view.LastIndexOf('9', '+'), view.Length - 2);
+            Assert.AreEqual(view.LastIndexOf('-', '1'), 0);
+            Assert.AreEqual(view.LastIndexOf('-', '+'), -1);
+        }
+
+        [TestMethod]
+        public void Test_LastIndexOf_String()
+        {
+            StringView view = new StringView("1234567890");
+
+            Assert.AreEqual(view.LastIndexOf("90"), view.Length - 2);
+            Assert.AreEqual(view.LastIndexOf("80"), -1);
+            Assert.AreEqual(view.LastIndexOf("12345678901212"), -1);
+            Assert.AreEqual(view.LastIndexOf("12"), 0);
+            Assert.AreEqual(view.LastIndexOf("23"), 1);
+            Assert.AreEqual(view.LastIndexOf("1234567890"), 0);
+        }
+
 
         [TestMethod]
         public void Test_SubString()

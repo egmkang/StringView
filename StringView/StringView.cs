@@ -1,7 +1,6 @@
-﻿// Copyright (c) Microsoft. All rights reserved.
+﻿// Copyright (c) egmkang wang. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 using System;
-using System.Runtime.CompilerServices;
 
 public unsafe struct StringView
 {
@@ -16,19 +15,29 @@ public unsafe struct StringView
         this.length = length;
         if (str.Length <= 0) return;
 
-        if (this.offset < 0 ||
-            this.offset >= this.str.Length ||
-            this.offset + this.length > this.str.Length)
-        {
-            throw new System.Exception("StringView's Constructor OutOfBound");
-        }
+        if (this.offset < 0 || this.offset >= this.str.Length) throw new ArgumentOutOfRangeException("begin");
+        if (this.offset + this.length > this.str.Length) throw new ArgumentOutOfRangeException("length");
     }
 
-    public int IndexOf(char c, int start = 0)
+    public int IndexOf(char c)
     {
+        return this.IndexOf(c, 0, this.length);
+    }
+
+    public int IndexOf(char c, int offset)
+    {
+        return this.IndexOf(c, offset, this.length - offset);
+    }
+
+    public int IndexOf(char c, int offset, int count)
+    {
+        if (offset < 0 || offset >= this.length) throw new ArgumentOutOfRangeException("offset");
+        if (count < 0 || count - 1 < offset) throw new ArgumentOutOfRangeException("count");
+
         fixed (char* p = this.str)
         {
-            for (int i = start; i < length; ++i)
+            int length = System.Math.Min(this.length, count);
+            for (int i = offset; i < length; ++i)
             {
                 if (p[this.offset + i] == c) return i;
             }
@@ -36,6 +45,7 @@ public unsafe struct StringView
 
         return -1;
     }
+
 
     private static bool ArrayContains(char[] array, char c)
     {
@@ -51,15 +61,24 @@ public unsafe struct StringView
 
     public int IndexOf(char[] anyOf)
     {
-        return this.IndexOf(anyOf, 0);
+        return this.IndexOf(anyOf, 0, this.length);
     }
 
     public int IndexOf(char[] anyOf, int offset)
     {
+        return this.IndexOf(anyOf, offset, this.length - offset);
+    }
+
+    public int IndexOf(char[] anyOf, int offset, int count)
+    {
+        if (offset < 0 || offset >= this.length) throw new ArgumentOutOfRangeException("offset");
+        if (count < 0 || count - 1 < offset) throw new ArgumentOutOfRangeException("count");
+
         if (anyOf.Length == 1) return this.IndexOf(anyOf[0], offset);
 
         fixed (char* p = this.str)
         {
+            int length = System.Math.Min(this.length, count);
             for (int i = offset; i < length; ++i)
             {
                 if (ArrayContains(anyOf, p[this.offset + i])) return i;
@@ -76,6 +95,9 @@ public unsafe struct StringView
 
     public int IndexOf(string s, int offset)
     {
+        if (s == null) throw new ArgumentNullException("s");
+        if (offset < 0 || offset >= this.length) throw new ArgumentOutOfRangeException("offset");
+
         int s1_length = this.str.Length;
         int s2_length = s.Length;
         fixed (char* p1 = this.str)
@@ -93,13 +115,112 @@ public unsafe struct StringView
         }
     }
 
-    public unsafe char this[int index]
+    public int LastIndexOf(char split)
+    {
+        return this.LastIndexOf(split, this.length - 1, this.length);
+    }
+
+    public int LastIndexOf(char split, int offst)
+    {
+        return this.LastIndexOf(split, offset, this.length - offset);
+    }
+
+    public int LastIndexOf(char split, int offset, int count)
+    {
+        if (offset < 0 || offset >= this.length) throw new ArgumentOutOfRangeException("offset");
+        if (count < 0 || count - 1 > offset) throw new ArgumentOutOfRangeException("count");
+
+        fixed (char* p = this.str)
+        {
+            int left = System.Math.Min((offset + 1), count);
+            while (left >= 4)
+            {
+                if (p[this.offset + --left] == split) goto Found;
+                if (p[this.offset + --left] == split) goto Found;
+                if (p[this.offset + --left] == split) goto Found;
+                if (p[this.offset + --left] == split) goto Found;
+            }
+            while (left > 0)
+            {
+                if (p[this.offset + --left] == split) goto Found;
+            }
+            return -1;
+            Found:
+            return left;
+        }
+    }
+
+    public int LastIndexOf(params char[] anyOf)
+    {
+        return this.LastIndexOf(anyOf, this.length - 1, this.length);
+    }
+    public int LastIndexOf(char[] anyOf, int offset)
+    {
+        return this.LastIndexOf(anyOf, offset, this.length - offset);
+    }
+    public int LastIndexOf(char[] anyOf, int offset, int count)
+    {
+        if (anyOf == null) throw new ArgumentNullException("anyOf");
+        if (offset < 0 || offset >= this.length) throw new ArgumentOutOfRangeException("offset");
+        if (count < 0 || count - 1 > offset) throw new ArgumentOutOfRangeException("count");
+
+        fixed (char* p = this.str)
+        {
+            int left = System.Math.Min((offset + 1), count);
+            while (left >= 4)
+            {
+                if (ArrayContains(anyOf, p[this.offset + --left])) goto Found;
+                if (ArrayContains(anyOf, p[this.offset + --left])) goto Found;
+                if (ArrayContains(anyOf, p[this.offset + --left])) goto Found;
+                if (ArrayContains(anyOf, p[this.offset + --left])) goto Found;
+            }
+            while (left > 0)
+            {
+                if (ArrayContains(anyOf, p[this.offset + --left])) goto Found;
+            }
+            return -1;
+            Found:
+            return left;
+        }
+    }
+
+    public int LastIndexOf(string s)
+    {
+        return this.LastIndexOf(s, this.length - 1);
+
+    }
+    public int LastIndexOf(string s, int offset)
+    {
+        if (s == null) throw new ArgumentNullException("s");
+        if (offset < 0 || offset >= this.length) throw new ArgumentOutOfRangeException("offset");
+
+        if (s.Length == 0 && this.length > 0) return 0;
+        offset = System.Math.Min(offset, this.length - s.Length);
+
+        int s1_length = this.str.Length;
+        int s2_length = s.Length;
+        fixed (char* p1 = this.str)
+        {
+            for (int i = offset; i >= 0; --i)
+            {
+                if (p1[this.offset + i] == s[0] &&
+                    (this.length - i) >= s.Length &&
+                    InternalCompareOrdinal(this.str, this.offset + i, s, 0, s.Length))
+                {
+                    return i;
+                }
+            }
+            return -1;
+        }
+    }
+
+    public char this[int index]
     {
         get
         {
             if (index < 0 || index >= this.length)
             {
-                throw new System.Exception("StringView's Index OutOfBound");
+                throw new ArgumentOutOfRangeException("index");
             }
 
             fixed (char* p = this.str)
