@@ -187,6 +187,15 @@ namespace UnitTest
             Assert.AreEqual(view.LastIndexOf("1234567890"), 0);
         }
 
+        [TestMethod]
+        public void Test_StartWith()
+        {
+            StringView view = new StringView("1234567890");
+            Assert.AreEqual(view.StartsWith(String.Empty), true);
+            Assert.AreEqual(view.StartsWith("12"), true);
+            Assert.AreEqual(view.StartsWith("12345678901"), false);
+            Assert.AreEqual(view.StartsWith("1234567890"), true);
+        }
 
         [TestMethod]
         public void Test_SubString()

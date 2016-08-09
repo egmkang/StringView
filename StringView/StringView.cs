@@ -214,6 +214,15 @@ public unsafe struct StringView
         }
     }
 
+    public bool StartsWith(string s)
+    {
+        if (s == null) throw new ArgumentNullException("s");
+        if (s.Length == 0) return true;
+        if (this.length < s.Length) return false;
+
+        return this.Substring(0, s.Length).Equals(new StringView(s));
+    }
+
     public char this[int index]
     {
         get
