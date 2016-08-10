@@ -188,13 +188,24 @@ namespace UnitTest
         }
 
         [TestMethod]
-        public void Test_StartWith()
+        public void Test_StarstWith()
         {
             StringView view = new StringView("1234567890");
             Assert.AreEqual(view.StartsWith(String.Empty), true);
             Assert.AreEqual(view.StartsWith("12"), true);
             Assert.AreEqual(view.StartsWith("12345678901"), false);
             Assert.AreEqual(view.StartsWith("1234567890"), true);
+        }
+
+        [TestMethod]
+        public void Test_EndsWith()
+        {
+            StringView view = new StringView("1234567890");
+            Assert.AreEqual(view.EndsWith('0'), true);
+            Assert.AreEqual(view.EndsWith("1"), false);
+            Assert.AreEqual(view.EndsWith("12345678901"), false);
+            Assert.AreEqual(view.EndsWith("1234567890"), true);
+            Assert.AreEqual(view.EndsWith("90"), true);
         }
 
         [TestMethod]

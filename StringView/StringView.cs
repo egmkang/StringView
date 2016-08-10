@@ -223,6 +223,22 @@ public unsafe struct StringView
         return this.Substring(0, s.Length).Equals(new StringView(s));
     }
 
+    public bool EndsWith(char c)
+    {
+        if (this.length != 0 && this[this.length - 1] == c)
+            return true;
+        return false;
+    }
+
+    public bool EndsWith(string s)
+    {
+        if (this.length >= s.Length &&
+            this.Substring(this.length - s.Length, s.Length).Equals(new StringView(s)))
+            return true;
+        return false;
+    }
+
+
     public char this[int index]
     {
         get
