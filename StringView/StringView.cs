@@ -59,17 +59,17 @@ public unsafe struct StringView
         return false;
     }
 
-    public int IndexOf(char[] anyOf)
+    public int IndexOfAny(char[] anyOf)
     {
-        return this.IndexOf(anyOf, 0, this.length);
+        return this.IndexOfAny(anyOf, 0, this.length);
     }
 
-    public int IndexOf(char[] anyOf, int offset)
+    public int IndexOfAny(char[] anyOf, int offset)
     {
-        return this.IndexOf(anyOf, offset, this.length - offset);
+        return this.IndexOfAny(anyOf, offset, this.length - offset);
     }
 
-    public int IndexOf(char[] anyOf, int offset, int count)
+    public int IndexOfAny(char[] anyOf, int offset, int count)
     {
         if (offset < 0 || offset >= this.length) throw new ArgumentOutOfRangeException("offset");
         if (count < 0 || count - 1 < offset) throw new ArgumentOutOfRangeException("count");
@@ -150,15 +150,15 @@ public unsafe struct StringView
         }
     }
 
-    public int LastIndexOf(params char[] anyOf)
+    public int LastIndexOfAny(params char[] anyOf)
     {
-        return this.LastIndexOf(anyOf, this.length - 1, this.length);
+        return this.LastIndexOfAny(anyOf, this.length - 1, this.length);
     }
-    public int LastIndexOf(char[] anyOf, int offset)
+    public int LastIndexOfAny(char[] anyOf, int offset)
     {
-        return this.LastIndexOf(anyOf, offset, this.length - offset);
+        return this.LastIndexOfAny(anyOf, offset, this.length - offset);
     }
-    public int LastIndexOf(char[] anyOf, int offset, int count)
+    public int LastIndexOfAny(char[] anyOf, int offset, int count)
     {
         if (anyOf == null) throw new ArgumentNullException("anyOf");
         if (offset < 0 || offset >= this.length) throw new ArgumentOutOfRangeException("offset");
@@ -236,6 +236,11 @@ public unsafe struct StringView
             this.Substring(this.length - s.Length, s.Length).Equals(new StringView(s)))
             return true;
         return false;
+    }
+
+    public bool Contains(string s)
+    {
+        return this.IndexOf(s) >= 0;
     }
 
 

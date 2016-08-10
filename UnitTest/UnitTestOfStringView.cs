@@ -136,12 +136,12 @@ namespace UnitTest
         public void Test_IndexOf_CharArray()
         {
             StringView view = new StringView("1234567890");
-            Assert.AreEqual(view.IndexOf(new char[2] { '1', '2' }), 0);
-            Assert.AreEqual(view.IndexOf(new char[2] { '2', '8' }), 1);
-            Assert.AreEqual(view.IndexOf(new char[2] { '9', '0' }), 8);
-            Assert.AreEqual(view.IndexOf(new char[1] { 'A' }), -1);
-            Assert.AreEqual(view.IndexOf(new char[3] { 'A', 'v', 'c' }), -1);
-            Assert.AreEqual(view.IndexOf(new char[10] { '0', '2', '3', '4', '5', '6', '8', '7', '9', '1' }), 0);
+            Assert.AreEqual(view.IndexOfAny(new char[2] { '1', '2' }), 0);
+            Assert.AreEqual(view.IndexOfAny(new char[2] { '2', '8' }), 1);
+            Assert.AreEqual(view.IndexOfAny(new char[2] { '9', '0' }), 8);
+            Assert.AreEqual(view.IndexOfAny(new char[1] { 'A' }), -1);
+            Assert.AreEqual(view.IndexOfAny(new char[3] { 'A', 'v', 'c' }), -1);
+            Assert.AreEqual(view.IndexOfAny(new char[10] { '0', '2', '3', '4', '5', '6', '8', '7', '9', '1' }), 0);
         }
 
         [TestMethod]
@@ -168,10 +168,10 @@ namespace UnitTest
         {
             StringView view = new StringView("1234567890");
 
-            Assert.AreEqual(view.LastIndexOf('0', '9'), view.Length - 1);
-            Assert.AreEqual(view.LastIndexOf('9', '+'), view.Length - 2);
-            Assert.AreEqual(view.LastIndexOf('-', '1'), 0);
-            Assert.AreEqual(view.LastIndexOf('-', '+'), -1);
+            Assert.AreEqual(view.LastIndexOfAny('0', '9'), view.Length - 1);
+            Assert.AreEqual(view.LastIndexOfAny('9', '+'), view.Length - 2);
+            Assert.AreEqual(view.LastIndexOfAny('-', '1'), 0);
+            Assert.AreEqual(view.LastIndexOfAny('-', '+'), -1);
         }
 
         [TestMethod]
