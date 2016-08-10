@@ -1,8 +1,10 @@
 ﻿// Copyright (c) egmkang wang. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 using System;
+using System.Collections;
+using System.Collections.Generic;
 
-public unsafe struct StringView
+public unsafe struct StringView: IEnumerable<char>, IEquatable<String>
 {
     public static readonly StringView Empty = new StringView("");
 
@@ -248,7 +250,11 @@ public unsafe struct StringView
         return this.IndexOf(s) >= 0;
     }
 
-
+    /// <summary>
+    /// index must in [offset, offset + length)
+    /// </summary>
+    /// <param name="index">the index of the char array</param>
+    /// <returns>the charactor</returns>
     public char this[int index]
     {
         get
@@ -265,11 +271,16 @@ public unsafe struct StringView
         }
     }
 
+    /// <summary>
+    /// generate a readonly StringSlice or StringView
+    /// </summary>
+    /// <param name="begin">the slice's begin</param>
+    /// <param name="count">the slice's length</param>
+    /// <returns>the string slice</returns>
     public StringView Substring(int begin)
     {
         return this.Substring(begin, this.length - begin);
     }
-
     public StringView Substring(int begin, int count)
     {
         if (this.length == 0 && begin == 0 && count == 0) return Empty;
@@ -280,6 +291,13 @@ public unsafe struct StringView
         return new StringView(this.str, this.offset + begin, count);
     }
 
+    /// <summary>
+    /// split the StringView into multi StringView, where the `split` is the seperator,
+    /// which can be a char or a string.
+    /// when split is null, the seperator is `WhiteSpace`.
+    /// </summary>
+    /// <param name="split">the seperator</param>
+    /// <returns>Array of StringView</returns>
     public StringView[] Split(char split)
     {
         int length = this.length;
@@ -298,7 +316,6 @@ public unsafe struct StringView
         if (index != length) ret[count++] = this.Substring(index, length - index);
         return ret;
     }
-
     public StringView[] Split(params char[] split)
     {
         int length = this.length;
@@ -317,7 +334,6 @@ public unsafe struct StringView
         if (index != length) ret[count++] = this.Substring(index, length - index);
         return ret;
     }
-
     public StringView[] Split(params string[] split)
     {
         int length = this.length;
@@ -528,7 +544,10 @@ public unsafe struct StringView
         return ret;
     }
 
-    //check all char is < 0x80
+    /// <summary>
+    /// check all chars < 0x80
+    /// </summary>
+    /// <returns>true, if all chars is < 0x80 </returns>
     public bool IsAscii()
     {
         fixed (char* p = this.str)
@@ -585,11 +604,14 @@ public unsafe struct StringView
         }
     }
 
+    /// <summary>
+    /// allocate one new Char[] and copy all chars
+    /// </summary>
+    /// <returns>all chars's copy</returns>
     public char[] ToCharArray()
     {
         return this.ToCharArray(0, this.length);
     }
-
     public char[] ToCharArray(int offset, int count)
     {
         if (this.length == 0 && count == this.length) return new char[0];
@@ -605,6 +627,12 @@ public unsafe struct StringView
         return array;
     }
 
+    /// <summary>
+    /// concat multi strings into one
+    /// high performance then String's operator +
+    /// </summary>
+    /// <param name="values">array of strings</param>
+    /// <returns>one string</returns>
     public static string Concat(params string[] values)
     {
         if (values == null) throw new ArgumentNullException("values");
@@ -633,7 +661,6 @@ public unsafe struct StringView
 
         return ret;
     }
-
     public static string Concat(params object[] values)
     {
         if (values == null) throw new ArgumentNullException("values");
@@ -646,7 +673,6 @@ public unsafe struct StringView
         }
         return Concat(array);
     }
-
     public static string Concat(params StringView[] values)
     {
         if (values == null) throw new ArgumentNullException("values");
@@ -675,11 +701,16 @@ public unsafe struct StringView
         return ret;
     }
 
+    /// <summary>
+    /// concat multi string into one, with a seperator
+    /// </summary>
+    /// <param name="seperator">seperator string or split string</param>
+    /// <param name="values">array of strings</param>
+    /// <returns>one string</returns>
     public static string Join(string seperator, params string[] values)
     {
         return Join(seperator, values, 0, values.Length);
     }
-
     public static string Join(string seperator, string[] values, int offset, int count)
     {
         if (seperator == null) seperator = String.Empty;
@@ -717,7 +748,6 @@ public unsafe struct StringView
 
         return ret;
     }
-
     public static string Join(string seperator, params StringView[] values)
     {
         return Join(seperator, values, 0, values.Length);
@@ -850,15 +880,31 @@ public unsafe struct StringView
     public string ToLower()
     {
         //TODO
-        return string.Empty;
+        throw new NotImplementedException();
     }
 
     public string ToUpper()
     {
         //TODO
-        return string.Empty;
+        throw new NotImplementedException();
     }
-    
+
+    /// <summary>
+    /// always throw a Exception, because of enumerator's performance is very bad
+    /// avoid using enumerator
+    /// use indexed property instead
+    /// </summary>
+    /// <returns></returns>
+    public IEnumerator<char> GetEnumerator()
+    {
+        throw new Exception("Avoid using Enumerator, it gets a very bad performance. use the indexed property instead");
+    }
+
+    IEnumerator IEnumerable.GetEnumerator()
+    {
+        throw new Exception("Avoid using Enumerator, it gets a very bad performance. use the indexed property instead");
+    }
+
     /// <summary>
     /// the real string of the StringView
     /// </summary>
