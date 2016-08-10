@@ -600,6 +600,77 @@ public unsafe struct StringView
         return array;
     }
 
+    public static string Concat(params string[] values)
+    {
+        if (values == null) throw new ArgumentNullException("values");
+        long length = 0;
+        foreach (var str in values)
+        {
+            if (!String.IsNullOrEmpty(str))
+                length += str.Length;
+        }
+        if (length > int.MaxValue) throw new OutOfMemoryException();
+
+        string ret = FastAllocateString((int)length);
+        fixed (char* p1 = ret)
+        {
+            int currentIndex = 0;
+            foreach (var str in values)
+            {
+                if (String.IsNullOrEmpty(str)) continue;
+                fixed (char* p2 = str)
+                {
+                    memcpy((byte*)(p1 + currentIndex), (byte*)p2, str.Length * sizeof(char));
+                }
+                currentIndex += str.Length;
+            }
+        }
+
+        return ret;
+    }
+
+    public static string Concat(params object[] values)
+    {
+        if (values == null) throw new ArgumentNullException("values");
+        string[] array = new string[values.Length];
+        int index = 0;
+        foreach (var obj in values)
+        {
+            array[index] = obj != null ? obj.ToString() : null;
+            ++index;
+        }
+        return Concat(array);
+    }
+
+    public static string Concat(params StringView[] values)
+    {
+        if (values == null) throw new ArgumentNullException("values");
+        long length = 0;
+        foreach (var str in values)
+        {
+            length += str.Length;
+        }
+        if (length > int.MaxValue) throw new OutOfMemoryException();
+
+        string ret = FastAllocateString((int)length);
+        fixed (char* p1 = ret)
+        {
+            int currentIndex = 0;
+            foreach (var str in values)
+            {
+                if (str.Length <= 0) continue;
+                fixed (char* p2 = str.Original)
+                {
+                    memcpy((byte*)(p1 + currentIndex), (byte*)(p2 + str.Offset), str.Length * sizeof(char));
+                }
+                currentIndex += str.Length;
+            }
+        }
+
+        return ret;
+    }
+
+
     // A simple memcpy impl
     // copy one CacheLine as it can
     public static void memcpy(byte* dest, byte* source, int length)
@@ -629,6 +700,10 @@ public unsafe struct StringView
                 *((int*)p1 + 1) = *((int*)p2 + 1);
                 *((int*)p1 + 2) = *((int*)p2 + 2);
                 *((int*)p1 + 3) = *((int*)p2 + 3);
+                *((int*)p1 + 4) = *((int*)p2 + 4);
+                *((int*)p1 + 5) = *((int*)p2 + 5);
+                *((int*)p1 + 6) = *((int*)p2 + 6);
+                *((int*)p1 + 7) = *((int*)p2 + 7);
                 length -= 32; p1 += 32; p2 += 32;
             }
         }

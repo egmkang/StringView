@@ -239,5 +239,26 @@ namespace UnitTest
             Assert.AreEqual(Enumerable.SequenceEqual(view.ToCharArray(1, 5), view.Original.ToCharArray(1, 5)), true);
         }
 
+        [TestMethod]
+        public void Test_Concat()
+        {
+            Assert.AreEqual(StringView.Concat("12", "23", "34", "45"), "12233445");
+            Assert.AreEqual(StringView.Concat("1"), "1");
+            Assert.AreEqual(StringView.Concat("12"), "12");
+            Assert.AreEqual(StringView.Concat("123"), "123");
+            Assert.AreEqual(StringView.Concat("1234"), "1234");
+            Assert.AreEqual(StringView.Concat("12345"), "12345");
+            Assert.AreEqual(StringView.Concat("123456"), "123456");
+            Assert.AreEqual(StringView.Concat("1234567"), "1234567");
+            Assert.AreEqual(StringView.Concat("12345678"), "12345678");
+            Assert.AreEqual(StringView.Concat("1234567890~!@#$%^&*()_+QWERTYUIOP{}][poiuytrewqasdfghjkl;:LKJHGFDSAZXCVBNM<>?/.,mnbvcxz",
+                "1234567890~!@#$%^&*()_+QWERTYUIOP{}][poiuytrewqasdfghjkl;:LKJHGFDSAZXCVBNM<>?/.,mnbvcxz"),
+                "1234567890~!@#$%^&*()_+QWERTYUIOP{}][poiuytrewqasdfghjkl;:LKJHGFDSAZXCVBNM<>?/.,mnbvcxz" +
+                "1234567890~!@#$%^&*()_+QWERTYUIOP{}][poiuytrewqasdfghjkl;:LKJHGFDSAZXCVBNM<>?/.,mnbvcxz"
+                );
+            Assert.AreEqual(StringView.Concat(new object[] { "12", "23", "34", "45" }), "12233445");
+            Assert.AreEqual(StringView.Concat(new StringView("12"), new StringView("23"), new StringView("34"), new StringView("45")), "12233445");
+        }
+
     }
 }
