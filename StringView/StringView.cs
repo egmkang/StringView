@@ -3,6 +3,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Reflection;
 
 public unsafe struct StringView: IEnumerable<char>, IEquatable<String>
 {
@@ -536,12 +537,20 @@ public unsafe struct StringView: IEnumerable<char>, IEquatable<String>
         return hash_code;
     }
 
-    //none System module cannot call .NET VM's FastAllocateString
-    //so i must init it with zero
-    private static string FastAllocateString(int length)
+    public static Func<int, string> FastAllocateString = InitFastAllocateString();
+    static Func<int, string> InitFastAllocateString()
     {
-        string ret = new string('\0', length);
-        return ret;
+        var fastAllocate = typeof(string).GetMethod("FastAllocateString", BindingFlags.NonPublic | BindingFlags.Static);
+        return (Func<int, string>)fastAllocate.CreateDelegate(typeof(Func<int, string>));
+    }
+
+    private unsafe delegate void WStrCpy(char* dmem, char* smem, int charCount);
+    static WStrCpy wstrcpy = InitWStrCpy();
+
+    static WStrCpy InitWStrCpy()
+    {
+        var fastAllocate = typeof(string).GetMethod("wstrcpy", BindingFlags.NonPublic | BindingFlags.Static);
+        return (WStrCpy)fastAllocate.CreateDelegate(typeof(WStrCpy));
     }
 
     /// <summary>
@@ -621,7 +630,7 @@ public unsafe struct StringView: IEnumerable<char>, IEquatable<String>
         char[] array = new char[count];
         fixed (char* p2 = this.str, p1 = array)
         {
-            memcpy((byte*)p1, (byte*)&p2[this.offset + offset], count * sizeof(char));
+            wstrcpy(p1, &p2[this.offset + offset], count);
         }
 
         return array;
@@ -653,7 +662,7 @@ public unsafe struct StringView: IEnumerable<char>, IEquatable<String>
                 if (String.IsNullOrEmpty(str)) continue;
                 fixed (char* p2 = str)
                 {
-                    memcpy((byte*)(p1 + currentIndex), (byte*)p2, str.Length * sizeof(char));
+                    wstrcpy((p1 + currentIndex), p2, str.Length);
                 }
                 currentIndex += str.Length;
             }
@@ -692,7 +701,7 @@ public unsafe struct StringView: IEnumerable<char>, IEquatable<String>
                 if (str.Length <= 0) continue;
                 fixed (char* p2 = str.Original)
                 {
-                    memcpy((byte*)(p1 + currentIndex), (byte*)(p2 + str.Offset), str.Length * sizeof(char));
+                    wstrcpy((p1 + currentIndex), (p2 + str.Offset), str.Length);
                 }
                 currentIndex += str.Length;
             }
@@ -734,13 +743,13 @@ public unsafe struct StringView: IEnumerable<char>, IEquatable<String>
             {
                 if (currentIndex != 0 && seperator.Length != 0)
                 {
-                    memcpy((byte*)(p1 + currentIndex), (byte*)s, seperator.Length * sizeof(char));
+                    wstrcpy((p1 + currentIndex), s, seperator.Length);
                     currentIndex += seperator.Length;
                 }
                 if (str.Length <= 0) continue;
                 fixed (char* p2 = str)
                 {
-                    memcpy((byte*)(p1 + currentIndex), (byte*)p2, str.Length * sizeof(char));
+                    wstrcpy((p1 + currentIndex), p2, str.Length);
                 }
                 currentIndex += str.Length;
             }
@@ -775,97 +784,19 @@ public unsafe struct StringView: IEnumerable<char>, IEquatable<String>
             {
                 if (currentIndex != 0 && seperator.Length != 0)
                 {
-                    memcpy((byte*)(p1 + currentIndex), (byte*)s, seperator.Length * sizeof(char));
+                    wstrcpy((p1 + currentIndex), s, seperator.Length);
                     currentIndex += seperator.Length;
                 }
                 if (str.Length <= 0) continue;
                 fixed (char* p2 = str.Original)
                 {
-                    memcpy((byte*)(p1 + currentIndex), (byte*)(p2 + str.Offset), str.Length * sizeof(char));
+                    wstrcpy((p1 + currentIndex), (p2 + str.Offset), str.Length);
                 }
                 currentIndex += str.Length;
             }
         }
 
         return ret;
-    }
-
-
-    // A simple memcpy impl
-    // copy one CacheLine as it can
-    public static void memcpy(byte* dest, byte* source, int length)
-    {
-        byte* p1 = dest;
-        byte* p2 = source;
-        if (length < 8) goto ShortCopy;
-
-        if (sizeof(System.IntPtr) == 8)
-        {
-            while (length >= 64)
-            {
-                *((long*)p1 + 0) = *((long*)p2 + 0);
-                *((long*)p1 + 1) = *((long*)p2 + 1);
-                *((long*)p1 + 2) = *((long*)p2 + 2);
-                *((long*)p1 + 3) = *((long*)p2 + 3);
-                *((long*)p1 + 4) = *((long*)p2 + 4);
-                *((long*)p1 + 5) = *((long*)p2 + 5);
-                *((long*)p1 + 6) = *((long*)p2 + 6);
-                *((long*)p1 + 7) = *((long*)p2 + 7);
-                length -= 64; p1 += 64; p2 += 64;
-            }
-        }
-        else
-        {
-            while (length >= 32)
-            {
-                *((int*)p1 + 0) = *((int*)p2 + 0);
-                *((int*)p1 + 1) = *((int*)p2 + 1);
-                *((int*)p1 + 2) = *((int*)p2 + 2);
-                *((int*)p1 + 3) = *((int*)p2 + 3);
-                *((int*)p1 + 4) = *((int*)p2 + 4);
-                *((int*)p1 + 5) = *((int*)p2 + 5);
-                *((int*)p1 + 6) = *((int*)p2 + 6);
-                *((int*)p1 + 7) = *((int*)p2 + 7);
-                length -= 32; p1 += 32; p2 += 32;
-            }
-        }
-        while (length >= 8)
-        {
-            *((int*)p1 + 0) = *((int*)p2 + 0);
-            *((int*)p1 + 1) = *((int*)p2 + 1);
-            length -= 8; p1 += 8; p2 += 8;
-        }
-
-        ShortCopy:
-        switch (length)
-        {
-            case 7:
-                *(int*)p1 = *(int*)p2;
-                *(short*)(p1 + 4) = *(short*)(p2 + 4);
-                *(p1 + 6) = *(p2 + 6);
-                break;
-            case 6:
-                *(int*)p1 = *(int*)p2;
-                *(short*)(p1 + 4) = *(short*)(p2 + 4);
-                break;
-            case 5:
-                *(int*)p1 = *(int*)p2;
-                *(p1 + 4) = *(p2 + 4);
-                break;
-            case 4:
-                *(int*)p1 = *(int*)p2;
-                break;
-            case 3:
-                *(short*)p1 = *(short*)p2;
-                *(p1 + 2) = *(p2 + 2);
-                break;
-            case 2:
-                *(short*)p1 = *(short*)p2;
-                break;
-            case 1:
-                *p1 = *p2;
-                break;
-        }
     }
 
     /// <summary>
