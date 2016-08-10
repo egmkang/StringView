@@ -260,5 +260,14 @@ namespace UnitTest
             Assert.AreEqual(StringView.Concat(new StringView("12"), new StringView("23"), new StringView("34"), new StringView("45")), "12233445");
         }
 
+        [TestMethod]
+        public void Test_Join()
+        {
+            Assert.AreEqual(StringView.Join("|", "1", "2", "3", "4"), "1|2|3|4");
+            Assert.AreEqual(StringView.Join(null, "1", "2", "3", "4"), "1234");
+            Assert.AreEqual(StringView.Join("|", new StringView[] { "1", "2", "3", "4" }), "1|2|3|4");
+        }
+
+
     }
 }

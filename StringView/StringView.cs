@@ -6,6 +6,11 @@ public unsafe struct StringView
 {
     public static readonly StringView Empty = new StringView("");
 
+    public static implicit operator StringView(string str)
+    {
+        return new StringView(str);
+    }
+
     public StringView(string str) : this(str, 0, str.Length) { }
 
     public StringView(string str, int begin, int length)
@@ -670,6 +675,91 @@ public unsafe struct StringView
         return ret;
     }
 
+    public static string Join(string seperator, params string[] values)
+    {
+        return Join(seperator, values, 0, values.Length);
+    }
+
+    public static string Join(string seperator, string[] values, int offset, int count)
+    {
+        if (seperator == null) seperator = String.Empty;
+        if (values == null)
+            throw new ArgumentNullException("values");
+
+        long length = 0;
+        foreach (var str in values)
+        {
+            if (String.IsNullOrEmpty(str)) continue;
+            length += str.Length;
+        }
+        length += (count - 1) * seperator.Length;
+        if (length > int.MaxValue) throw new OutOfMemoryException();
+
+        string ret = FastAllocateString((int)length);
+        fixed (char* p1 = ret, s = seperator)
+        {
+            int currentIndex = 0;
+            foreach (var str in values)
+            {
+                if (currentIndex != 0 && seperator.Length != 0)
+                {
+                    memcpy((byte*)(p1 + currentIndex), (byte*)s, seperator.Length * sizeof(char));
+                    currentIndex += seperator.Length;
+                }
+                if (str.Length <= 0) continue;
+                fixed (char* p2 = str)
+                {
+                    memcpy((byte*)(p1 + currentIndex), (byte*)p2, str.Length * sizeof(char));
+                }
+                currentIndex += str.Length;
+            }
+        }
+
+        return ret;
+    }
+
+    public static string Join(string seperator, params StringView[] values)
+    {
+        return Join(seperator, values, 0, values.Length);
+    }
+    public static string Join(string seperator, StringView[] values, int offset, int count)
+    {
+        if (seperator == null) seperator = String.Empty;
+        if (values == null)
+            throw new ArgumentNullException("values");
+
+        long length = 0;
+        foreach (var str in values)
+        {
+            if (str.Length == 0) continue;
+            length += str.Length;
+        }
+        length += (count - 1) * seperator.Length;
+        if (length > int.MaxValue) throw new OutOfMemoryException();
+
+        string ret = FastAllocateString((int)length);
+        fixed (char* p1 = ret, s = seperator)
+        {
+            int currentIndex = 0;
+            foreach (var str in values)
+            {
+                if (currentIndex != 0 && seperator.Length != 0)
+                {
+                    memcpy((byte*)(p1 + currentIndex), (byte*)s, seperator.Length * sizeof(char));
+                    currentIndex += seperator.Length;
+                }
+                if (str.Length <= 0) continue;
+                fixed (char* p2 = str.Original)
+                {
+                    memcpy((byte*)(p1 + currentIndex), (byte*)(p2 + str.Offset), str.Length * sizeof(char));
+                }
+                currentIndex += str.Length;
+            }
+        }
+
+        return ret;
+    }
+
 
     // A simple memcpy impl
     // copy one CacheLine as it can
@@ -677,6 +767,8 @@ public unsafe struct StringView
     {
         byte* p1 = dest;
         byte* p2 = source;
+        if (length < 8) goto ShortCopy;
+
         if (sizeof(System.IntPtr) == 8)
         {
             while (length >= 64)
@@ -713,6 +805,8 @@ public unsafe struct StringView
             *((int*)p1 + 1) = *((int*)p2 + 1);
             length -= 8; p1 += 8; p2 += 8;
         }
+
+        ShortCopy:
         switch (length)
         {
             case 7:
@@ -741,7 +835,6 @@ public unsafe struct StringView
             case 1:
                 *p1 = *p2;
                 break;
-            case 0:break;
         }
     }
 
