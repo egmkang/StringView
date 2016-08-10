@@ -5,6 +5,7 @@ namespace UnitTest
 {
     using System;
     using Microsoft.VisualStudio.TestTools.UnitTesting;
+    using System.Linq;
 
     [TestClass]
     public class UnitTestOfStringView
@@ -215,5 +216,28 @@ namespace UnitTest
             Assert.AreEqual(view.Substring(0), view);
             Assert.AreNotEqual(view.Substring(1), view);
         }
+
+        [TestMethod]
+        public void Test_IsAscii()
+        {
+            StringView view = new StringView("1234567890");
+            Assert.AreEqual(view.IsAscii(), true);
+            Assert.AreEqual(new StringView("123456789012345678901234567890123456789012345678901234567890").IsAscii(), true);
+            Assert.AreEqual(new StringView("1234567890哈哈").IsAscii(), false);
+            Assert.AreEqual(new StringView("12哈哈34567890").IsAscii(), false);
+            Assert.AreEqual(new StringView("12哈哈3456789012哈哈3456789012哈哈34567890").IsAscii(), false);
+        }
+
+        [TestMethod]
+        public void Test_ToCharArray()
+        {
+            StringView view = new StringView("1234567890");
+            var ret = view.ToCharArray();
+            var expected = view.Original.ToCharArray();
+            Assert.AreEqual(Enumerable.SequenceEqual(ret, expected), true);
+            Assert.AreEqual(Enumerable.SequenceEqual(StringView.Empty.ToCharArray(), String.Empty.ToCharArray()), true);
+            Assert.AreEqual(Enumerable.SequenceEqual(view.ToCharArray(1, 5), view.Original.ToCharArray(1, 5)), true);
+        }
+
     }
 }

@@ -106,7 +106,7 @@ public unsafe struct StringView
             {
                 if (p1[this.offset + i] == s[0] &&
                     (this.length - i) >= s.Length &&
-                    InternalCompareOrdinal(this.str, this.offset + i, s, 0, s.Length))
+                    InternalEquals(this.str, this.offset + i, s, 0, s.Length))
                 {
                     return i;
                 }
@@ -205,7 +205,7 @@ public unsafe struct StringView
             {
                 if (p1[this.offset + i] == s[0] &&
                     (this.length - i) >= s.Length &&
-                    InternalCompareOrdinal(this.str, this.offset + i, s, 0, s.Length))
+                    InternalEquals(this.str, this.offset + i, s, 0, s.Length))
                 {
                     return i;
                 }
@@ -265,9 +265,14 @@ public unsafe struct StringView
         return this.Substring(begin, this.length - begin);
     }
 
-    public StringView Substring(int begin, int length)
+    public StringView Substring(int begin, int count)
     {
-        return new StringView(this.str, this.offset + begin, length);
+        if (this.length == 0 && begin == 0 && count == 0) return Empty;
+
+        if (begin < 0 || begin >= this.length) throw new ArgumentOutOfRangeException("begin");
+        if (count < 0 || count + begin > this.length) throw new ArgumentOutOfRangeException("count");
+
+        return new StringView(this.str, this.offset + begin, count);
     }
 
     public StringView[] Split(char split)
@@ -385,7 +390,7 @@ public unsafe struct StringView
 
                     if (p[this.offset + i] == seperator[0] && (this.length - i) >= seperator.Length)
                     {
-                        if (InternalCompareOrdinal(this.str, this.offset + i, seperator, 0, seperator.Length))
+                        if (InternalEquals(this.str, this.offset + i, seperator, 0, seperator.Length))
                         {
                             posArray[splitCount] = i;
                             lenArray[splitCount] = seperator.Length;
@@ -401,7 +406,7 @@ public unsafe struct StringView
         }
     }
 
-    private static bool InternalCompareOrdinal(String strA, int indexA, String strB, int indexB, int count)
+    private static bool InternalEquals(String strA, int indexA, String strB, int indexB, int count)
     {
         return new StringView(strA, indexA, count) == new StringView(strB, indexB, count);
     }
@@ -437,7 +442,7 @@ public unsafe struct StringView
 
         fixed (char* p1 = this.str, p2 = s)
         {
-            return EqualHelper(p1 + this.offset, p2 + offset, length);
+            return EqualsHelper(p1 + this.offset, p2 + offset, length);
         }
     }
 
@@ -451,7 +456,7 @@ public unsafe struct StringView
     }
 
     //Copy from .NET System.String.EqualsHelper
-    private static bool EqualHelper(char* p1, char* p2, int length)
+    private static bool EqualsHelper(char* p1, char* p2, int length)
     {
         int left = length;
         if (sizeof(System.IntPtr) == 8)
@@ -510,6 +515,160 @@ public unsafe struct StringView
         return hash_code;
     }
 
+    //none System module cannot call .NET VM's FastAllocateString
+    //so i must init it with zero
+    private static string FastAllocateString(int length)
+    {
+        string ret = new string('\0', length);
+        return ret;
+    }
+
+    //check all char is < 0x80
+    public bool IsAscii()
+    {
+        fixed (char* p = this.str)
+        {
+            char* p1 = p + this.offset;
+            int left = this.length;
+
+            if (sizeof(System.IntPtr) == 8)
+            {
+                while (left >= 32)
+                {
+                    if ((*(ulong*)(p1 + 0) & 0xFF80FF80FF80FF80ul) != 0) goto RetFalse;
+                    if ((*(ulong*)(p1 + 2) & 0xFF80FF80FF80FF80ul) != 0) goto RetFalse;
+                    if ((*(ulong*)(p1 + 4) & 0xFF80FF80FF80FF80ul) != 0) goto RetFalse;
+                    if ((*(ulong*)(p1 + 8) & 0xFF80FF80FF80FF80ul) != 0) goto RetFalse;
+                    if ((*(ulong*)(p1 + 10) & 0xFF80FF80FF80FF80ul) != 0) goto RetFalse;
+                    if ((*(ulong*)(p1 + 12) & 0xFF80FF80FF80FF80ul) != 0) goto RetFalse;
+                    if ((*(ulong*)(p1 + 14) & 0xFF80FF80FF80FF80ul) != 0) goto RetFalse;
+                    if ((*(ulong*)(p1 + 16) & 0xFF80FF80FF80FF80ul) != 0) goto RetFalse;
+                    p1 += 32; left -= 32;
+                }
+            }
+            else
+            {
+                while (left >= 16)
+                {
+                    if ((*(int*)(p1 + 0) & 0xFF80FF80) != 0) goto RetFalse;
+                    if ((*(int*)(p1 + 2) & 0xFF80FF80) != 0) goto RetFalse;
+                    if ((*(int*)(p1 + 4) & 0xFF80FF80) != 0) goto RetFalse;
+                    if ((*(int*)(p1 + 8) & 0xFF80FF80) != 0) goto RetFalse;
+                    if ((*(int*)(p1 + 10) & 0xFF80FF80) != 0) goto RetFalse;
+                    if ((*(int*)(p1 + 12) & 0xFF80FF80) != 0) goto RetFalse;
+                    if ((*(int*)(p1 + 14) & 0xFF80FF80) != 0) goto RetFalse;
+                    if ((*(int*)(p1 + 16) & 0xFF80FF80) != 0) goto RetFalse;
+                    p1 += 16; left -= 16;
+                }
+            }
+            while (left >= 8)
+            {
+                if ((*(int*)(p1 + 0) & 0xFF80FF80) != 0) goto RetFalse;
+                if ((*(int*)(p1 + 2) & 0xFF80FF80) != 0) goto RetFalse;
+                if ((*(int*)(p1 + 4) & 0xFF80FF80) != 0) goto RetFalse;
+                if ((*(int*)(p1 + 8) & 0xFF80FF80) != 0) goto RetFalse;
+                p1 += 8; left -= 8;
+            }
+            while (left > 0)
+            {
+                if ((*p1 & 0xFF80) != 0) goto RetFalse;
+                p1 += 1; left -= 1;
+            }
+            return true;
+            RetFalse:
+            return false;
+        }
+    }
+
+    public char[] ToCharArray()
+    {
+        return this.ToCharArray(0, this.length);
+    }
+
+    public char[] ToCharArray(int offset, int count)
+    {
+        if (this.length == 0 && count == this.length) return new char[0];
+
+        if (offset < 0 || offset >= this.length) throw new ArgumentOutOfRangeException("offset");
+        if (count < 0 || count - 1 < offset) throw new ArgumentOutOfRangeException("count");
+        char[] array = new char[count];
+        fixed (char* p2 = this.str, p1 = array)
+        {
+            memcpy((byte*)p1, (byte*)&p2[this.offset + offset], count * sizeof(char));
+        }
+
+        return array;
+    }
+
+    // A simple memcpy impl
+    // copy one CacheLine as it can
+    public static void memcpy(byte* dest, byte* source, int length)
+    {
+        byte* p1 = dest;
+        byte* p2 = source;
+        if (sizeof(System.IntPtr) == 8)
+        {
+            while (length >= 64)
+            {
+                *((long*)p1 + 0) = *((long*)p2 + 0);
+                *((long*)p1 + 1) = *((long*)p2 + 1);
+                *((long*)p1 + 2) = *((long*)p2 + 2);
+                *((long*)p1 + 3) = *((long*)p2 + 3);
+                *((long*)p1 + 4) = *((long*)p2 + 4);
+                *((long*)p1 + 5) = *((long*)p2 + 5);
+                *((long*)p1 + 6) = *((long*)p2 + 6);
+                *((long*)p1 + 7) = *((long*)p2 + 7);
+                length -= 64; p1 += 64; p2 += 64;
+            }
+        }
+        else
+        {
+            while (length >= 32)
+            {
+                *((int*)p1 + 0) = *((int*)p2 + 0);
+                *((int*)p1 + 1) = *((int*)p2 + 1);
+                *((int*)p1 + 2) = *((int*)p2 + 2);
+                *((int*)p1 + 3) = *((int*)p2 + 3);
+                length -= 32; p1 += 32; p2 += 32;
+            }
+        }
+        while (length >= 8)
+        {
+            *((int*)p1 + 0) = *((int*)p2 + 0);
+            *((int*)p1 + 1) = *((int*)p2 + 1);
+            length -= 8; p1 += 8; p2 += 8;
+        }
+        switch (length)
+        {
+            case 7:
+                *(int*)p1 = *(int*)p2;
+                *(short*)(p1 + 4) = *(short*)(p2 + 4);
+                *(p1 + 6) = *(p2 + 6);
+                break;
+            case 6:
+                *(int*)p1 = *(int*)p2;
+                *(short*)(p1 + 4) = *(short*)(p2 + 4);
+                break;
+            case 5:
+                *(int*)p1 = *(int*)p2;
+                *(p1 + 4) = *(p2 + 4);
+                break;
+            case 4:
+                *(int*)p1 = *(int*)p2;
+                break;
+            case 3:
+                *(short*)p1 = *(short*)p2;
+                *(p1 + 2) = *(p2 + 2);
+                break;
+            case 2:
+                *(short*)p1 = *(short*)p2;
+                break;
+            case 1:
+                *p1 = *p2;
+                break;
+            case 0:break;
+        }
+    }
 
     /// <summary>
     /// generate a string instance, which will copy the chars of the StringView
@@ -518,6 +677,18 @@ public unsafe struct StringView
     public override string ToString()
     {
         return this.str.Substring(offset, length);
+    }
+
+    public string ToLower()
+    {
+        //TODO
+        return string.Empty;
+    }
+
+    public string ToUpper()
+    {
+        //TODO
+        return string.Empty;
     }
     
     /// <summary>
