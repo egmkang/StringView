@@ -256,7 +256,6 @@ namespace UnitTest
                 "1234567890~!@#$%^&*()_+QWERTYUIOP{}][poiuytrewqasdfghjkl;:LKJHGFDSAZXCVBNM<>?/.,mnbvcxz" +
                 "1234567890~!@#$%^&*()_+QWERTYUIOP{}][poiuytrewqasdfghjkl;:LKJHGFDSAZXCVBNM<>?/.,mnbvcxz"
                 );
-            Assert.AreEqual(StringView.Concat(new object[] { "12", "23", "34", "45" }), "12233445");
             Assert.AreEqual(StringView.Concat(new StringView("12"), new StringView("23"), new StringView("34"), new StringView("45")), "12233445");
         }
 

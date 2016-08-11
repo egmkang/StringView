@@ -642,49 +642,16 @@ public unsafe struct StringView: IEnumerable<char>, IEquatable<String>
     /// </summary>
     /// <param name="values">array of strings</param>
     /// <returns>one string</returns>
-    public static string Concat(params string[] values)
-    {
-        if (values == null) throw new ArgumentNullException("values");
-        long length = 0;
-        foreach (var str in values)
-        {
-            if (!String.IsNullOrEmpty(str))
-                length += str.Length;
-        }
-        if (length > int.MaxValue) throw new OutOfMemoryException();
-
-        string ret = FastAllocateString((int)length);
-        fixed (char* p1 = ret)
-        {
-            int currentIndex = 0;
-            foreach (var str in values)
-            {
-                if (String.IsNullOrEmpty(str)) continue;
-                fixed (char* p2 = str)
-                {
-                    wstrcpy((p1 + currentIndex), p2, str.Length);
-                }
-                currentIndex += str.Length;
-            }
-        }
-
-        return ret;
-    }
-    public static string Concat(params object[] values)
-    {
-        if (values == null) throw new ArgumentNullException("values");
-        string[] array = new string[values.Length];
-        int index = 0;
-        foreach (var obj in values)
-        {
-            array[index] = obj != null ? obj.ToString() : null;
-            ++index;
-        }
-        return Concat(array);
-    }
     public static string Concat(params StringView[] values)
     {
         if (values == null) throw new ArgumentNullException("values");
+        switch (values.Length)
+        {
+            case 1: return Concat(values[0]);
+            case 2: return Concat(values[0], values[1]);
+            case 3: return Concat(values[0], values[1], values[2]);
+            case 4: return Concat(values[0], values[1], values[2], values[3]);
+        }
         long length = 0;
         foreach (var str in values)
         {
@@ -709,6 +676,65 @@ public unsafe struct StringView: IEnumerable<char>, IEquatable<String>
 
         return ret;
     }
+    public static string Concat(StringView v0)
+    {
+        return v0.ToString();
+    }
+    public static string Concat(StringView v0, StringView v1)
+    {
+        int nonEmpty = (v0.length != 0 ? 1 : 0) + (v1.length != 0 ? 2 : 0);
+        switch (nonEmpty)
+        {
+            case 1:return v0.ToString();
+            case 2:return v1.ToString();
+        }
+        var ret = FastAllocateString(v0.length + v1.length);
+        fixed (char* p = ret, p0 = v0.str, p1 = v1.str)
+        {
+            wstrcpy(p + 0, p0 + v0.offset, v0.length);
+            wstrcpy(p + v0.length, p1 + v1.offset, v1.length);
+        }
+        return ret;
+    }
+    public static string Concat(StringView v0, StringView v1, StringView v2)
+    {
+        int nonEmpty = (v0.length != 0 ? 1 : 0) + (v1.length != 0 ? 2 : 0) + (v2.length != 0 ? 4 : 0);
+        switch (nonEmpty)
+        {
+            case 1: return v0.ToString();
+            case 2: return v1.ToString();
+            case 4: return v2.ToString();
+        }
+        var ret = FastAllocateString(v0.length + v1.length + v2.length);
+        fixed (char* p = ret, p0 = v0.str, p1 = v1.str, p2 = v2.str)
+        {
+            wstrcpy(p + 0, p0 + v0.offset, v0.length);
+            wstrcpy(p + v0.length, p1 + v1.offset, v1.length);
+            wstrcpy(p + v0.length + v1.length, p2 + v2.offset, v2.length);
+        }
+        return ret;
+    }
+    public static string Concat(StringView v0, StringView v1, StringView v2, StringView v3)
+    {
+        int nonEmpty = (v0.length != 0 ? 1 : 0) + (v1.length != 0 ? 2 : 0) + (v2.length != 0 ? 4 : 0) + (v3.length != 0 ? 8 : 0);
+        switch (nonEmpty)
+        {
+            case 1: return v0.ToString();
+            case 2: return v1.ToString();
+            case 4: return v2.ToString();
+            case 8: return v3.ToString();
+        }
+        var ret = FastAllocateString(v0.length + v1.length + v2.length + v3.length);
+        fixed (char* p = ret, p0 = v0.str, p1 = v1.str, p2 = v2.str, p3 = v3.str)
+        {
+            wstrcpy(p + 0, p0 + v0.offset, v0.length);
+            wstrcpy(p + v0.length, p1 + v1.offset, v1.length);
+            wstrcpy(p + v0.length + v1.length, p2 + v2.offset, v2.length);
+            wstrcpy(p + v0.length + v1.length + v2.length, p3 + v3.offset, v3.length);
+        }
+        return ret;
+    }
+
 
     /// <summary>
     /// concat multi string into one, with a seperator
@@ -716,47 +742,6 @@ public unsafe struct StringView: IEnumerable<char>, IEquatable<String>
     /// <param name="seperator">seperator string or split string</param>
     /// <param name="values">array of strings</param>
     /// <returns>one string</returns>
-    public static string Join(string seperator, params string[] values)
-    {
-        return Join(seperator, values, 0, values.Length);
-    }
-    public static string Join(string seperator, string[] values, int offset, int count)
-    {
-        if (seperator == null) seperator = String.Empty;
-        if (values == null)
-            throw new ArgumentNullException("values");
-
-        long length = 0;
-        foreach (var str in values)
-        {
-            if (String.IsNullOrEmpty(str)) continue;
-            length += str.Length;
-        }
-        length += (count - 1) * seperator.Length;
-        if (length > int.MaxValue) throw new OutOfMemoryException();
-
-        string ret = FastAllocateString((int)length);
-        fixed (char* p1 = ret, s = seperator)
-        {
-            int currentIndex = 0;
-            foreach (var str in values)
-            {
-                if (currentIndex != 0 && seperator.Length != 0)
-                {
-                    wstrcpy((p1 + currentIndex), s, seperator.Length);
-                    currentIndex += seperator.Length;
-                }
-                if (str.Length <= 0) continue;
-                fixed (char* p2 = str)
-                {
-                    wstrcpy((p1 + currentIndex), p2, str.Length);
-                }
-                currentIndex += str.Length;
-            }
-        }
-
-        return ret;
-    }
     public static string Join(string seperator, params StringView[] values)
     {
         return Join(seperator, values, 0, values.Length);
