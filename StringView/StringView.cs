@@ -5,7 +5,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 
-public unsafe struct StringView: IEnumerable<char>, IEquatable<String>
+public unsafe struct StringView: IEnumerable<char>, IEquatable<String>, IEquatable<StringView>
 {
     public static readonly StringView Empty = new StringView("");
 
