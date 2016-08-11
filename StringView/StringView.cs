@@ -37,21 +37,43 @@ public unsafe struct StringView: IEnumerable<char>, IEquatable<String>, IEquatab
         return this.IndexOf(c, offset, this.length - offset);
     }
 
-    public int IndexOf(char c, int offset, int count)
+    public int IndexOf(char value, int offset, int count)
     {
         if (offset < 0 || offset >= this.length) throw new ArgumentOutOfRangeException("offset");
         if (count < 0 || count - 1 < offset) throw new ArgumentOutOfRangeException("count");
 
         fixed (char* p = this.str)
         {
-            int length = System.Math.Min(this.length, count);
-            for (int i = offset; i < length; ++i)
-            {
-                if (p[this.offset + i] == c) return i;
-            }
-        }
+            char* pCh = p + offset;
 
-        return -1;
+            while (count >= 4)
+            {
+                if (*pCh == value) goto ReturnIndex;
+                if (*(pCh + 1) == value) goto ReturnIndex1;
+                if (*(pCh + 2) == value) goto ReturnIndex2;
+                if (*(pCh + 3) == value) goto ReturnIndex3;
+
+                count -= 4;
+                pCh += 4;
+            }
+
+            while (count > 0)
+            {
+                if (*pCh == value)
+                    goto ReturnIndex;
+
+                count--;
+                pCh++;
+            }
+
+            return -1;
+
+            ReturnIndex3: pCh++;
+            ReturnIndex2: pCh++;
+            ReturnIndex1: pCh++;
+            ReturnIndex:
+            return (int)(pCh - p);
+        }
     }
 
 
