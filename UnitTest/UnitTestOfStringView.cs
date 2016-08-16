@@ -267,6 +267,20 @@ namespace UnitTest
             Assert.AreEqual(StringView.Join("|", new StringView[] { "1", "2", "3", "4" }), "1|2|3|4");
         }
 
+        [TestMethod]
+        public void Test_StringViewToInt()
+        {
+            Assert.AreEqual(new StringView("123456789").ToInt32(), 123456789);
+            Assert.AreEqual(new StringView("-123456789").ToInt32(), -123456789);
+            Assert.AreEqual(new StringView("-123456789121212").ToInt64(), -123456789121212);
+        }
 
+        [TestMethod]
+        public void Test_StringBuilderAppend()
+        {
+            var builder = new System.Text.StringBuilder();
+            builder.Append(new StringView("123456789"));
+            Assert.AreEqual(builder.ToString(), "123456789");
+        }
     }
 }
