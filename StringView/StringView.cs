@@ -4,6 +4,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 
 public unsafe struct StringView: IEnumerable<char>, IEquatable<String>, IEquatable<StringView>
 {
@@ -542,7 +543,7 @@ public unsafe struct StringView: IEnumerable<char>, IEquatable<String>, IEquatab
         return false;
     }
 
-
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     static int CombineHashCodes(int h1, int h2)
     {
         return (((h1 << 5) + h1) ^ h2);
