@@ -543,23 +543,36 @@ public unsafe struct StringView: IEnumerable<char>, IEquatable<String>, IEquatab
     }
 
 
-    internal static int CombineHashCodes(int h1, int h2)
+    static int CombineHashCodes(int h1, int h2)
     {
         return (((h1 << 5) + h1) ^ h2);
     }
 
-    //TODO: improve the performance
     public override int GetHashCode()
     {
         int hash_code = 0;
-        for (int i = 0; i < this.length; ++i)
+        int left = this.length;
+        fixed (char* pointer = this.str)
         {
-            hash_code = CombineHashCodes(hash_code, this[i].GetHashCode());
+            char* p = pointer + this.offset;
+            while (left >= 4)
+            {
+                hash_code = CombineHashCodes(hash_code, (*(int*)(p + 0)).GetHashCode());
+                hash_code = CombineHashCodes(hash_code, (*(int*)(p + 4)).GetHashCode());
+                left -= 4;
+                p += 4;
+            }
+            while (left > 0)
+            {
+                hash_code = CombineHashCodes(hash_code, p->GetHashCode());
+                left -= 1;
+                p += 1;
+            }
         }
         return hash_code;
     }
 
-    public static Func<int, string> FastAllocateString = InitFastAllocateString();
+    private static Func<int, string> FastAllocateString = InitFastAllocateString();
     static Func<int, string> InitFastAllocateString()
     {
         var fastAllocate = typeof(string).GetMethod("FastAllocateString", BindingFlags.NonPublic | BindingFlags.Static);

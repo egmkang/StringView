@@ -282,5 +282,12 @@ namespace UnitTest
             builder.Append(new StringView("123456789"));
             Assert.AreEqual(builder.ToString(), "123456789");
         }
+
+        [TestMethod]
+        public void Test_HashCode()
+        {
+            Assert.AreEqual(new StringView("123456789").GetHashCode(),
+                new StringView("0123456789", 1, 9).GetHashCode());
+        }
     }
 }
