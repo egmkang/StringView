@@ -38,11 +38,8 @@ public unsafe struct StringView: IEnumerable<char>, IEquatable<String>, IEquatab
         return this.IndexOf(c, offset, this.length - offset);
     }
 
-    public int IndexOf(char value, int offset, int count)
+    private int IndexOf32bit(int offset, int count, char value)
     {
-        if (offset < 0 || offset >= this.length) throw new ArgumentOutOfRangeException("offset");
-        if (count < 0 || count - 1 < offset) throw new ArgumentOutOfRangeException("count");
-
         fixed (char* p = this.str)
         {
             char* pCh = p + offset;
@@ -75,6 +72,92 @@ public unsafe struct StringView: IEnumerable<char>, IEquatable<String>, IEquatab
             ReturnIndex:
             return (int)(pCh - p);
         }
+    }
+
+    private static int IndexOf8B(char* s, int offset, int length, char c)
+    {
+        if (length > 8 || length < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(length));
+        }
+        char* p = s + offset;
+
+        switch (length)
+        {
+            case 8: goto L8;
+            case 7: goto L7;
+            case 6: goto L6;
+            case 5: goto L5;
+            case 4: goto L4;
+            case 3: goto L3;
+            case 2: goto L2;
+            case 1: goto L1;
+            case 0: goto L0;
+        }
+
+        L0: goto Found;
+        L8: if (*p++ == c) goto Found;
+        L7: if (*p++ == c) goto Found;
+        L6: if (*p++ == c) goto Found;
+        L5: if (*p++ == c) goto Found;
+        L4: if (*p++ == c) goto Found;
+        L3: if (*p++ == c) goto Found;
+        L2: if (*p++ == c) goto Found;
+        L1: if (*p++ == c) goto Found;
+
+        return -1;
+        Found: return (int)(p - s);
+    }
+
+    private const ulong l1u = 0x1ul | 0x1ul << 16 | 0x1ul << 32 | 0x1ul << 48;
+    private const ulong l80u = 0x8000ul | 0x8000ul << 16 | 0x8000ul << 32 | 0x8000ul << 48;
+    private int IndexOf64bit(int offset, int count, char value)
+    {
+        fixed (char* p = this.str)
+        {
+            int align = (int)p & 0x7;
+            //8 byte aligned or 4 char aligned
+            if (align != 0)
+            {
+                int index = IndexOf8B(p, offset, align >> 1, value);
+                if (index >= 0) return index;
+            }
+            //strlen's quick check is based on ((i - 0x1) & ~i) & 0x80
+            //so, if i add `-expectedChar` onto i
+            //then i can reuse this formula
+            ulong magic = (ulong)value;
+            ulong expected = unchecked(magic | magic << 16 | magic << 32 | magic << 48);
+            offset += align >> 1;
+            int padLength = (length - offset) >> 2 << 2;
+            for (; offset < padLength; offset += 4)
+            {
+                ulong p1 = *(ulong*)(p + offset + 0) - expected;
+                ulong p2 = *(ulong*)(p + offset + 4) - expected;
+                ulong result1 = unchecked((p1 - l1u) & ~p1 & l80u);
+                ulong reuslt2 = unchecked((p2 - l1u) & ~p2 & l80u);
+                if (result1 != 0)
+                {
+                    return IndexOf8B(p, offset + 0, 4, value);
+                }
+                if (reuslt2 != 0)
+                {
+                    return IndexOf8B(p, offset + 4, 4, value);
+                }
+            }
+            return IndexOf8B(p, offset, length - offset, value);
+        }
+    }
+
+    public int IndexOf(char value, int offset, int count)
+    {
+        if (offset < 0 || offset >= this.length) throw new ArgumentOutOfRangeException("offset");
+        if (count < 0 || count - 1 < offset) throw new ArgumentOutOfRangeException("count");
+
+        if (sizeof(IntPtr) == 8)
+        {
+            return IndexOf64bit(offset, count, value);
+        }
+        return IndexOf32bit(offset, count, value);
     }
 
 
