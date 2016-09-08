@@ -54,6 +54,9 @@ namespace UnitTest
             {
                 Assert.AreEqual(array[i], splitExpectedArray[i]);
             }
+
+            var result = Enumerable.SequenceEqual(StringView.Empty.Split('_'), new StringView[1] { StringView.Empty });
+            Assert.AreEqual(result, true);
         }
 
         [TestMethod]

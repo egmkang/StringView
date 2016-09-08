@@ -1,12 +1,13 @@
 ﻿// Copyright (c) egmkang wang. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
+
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 
-public unsafe struct StringView: IEnumerable<char>, IEquatable<String>, IEquatable<StringView>
+public unsafe struct StringView : IEquatable<String>, IEquatable<StringView>
 {
     public static readonly StringView Empty = new StringView("");
 
@@ -417,7 +418,7 @@ public unsafe struct StringView: IEnumerable<char>, IEquatable<String>, IEquatab
         for (int i = 0; i < splitCount; ++i)
         {
             ret[count++] = this.Substring(index, posArray[i] - index);
-            index = posArray[i]+ 1;
+            index = posArray[i] + 1;
         }
 
         if (index != length) ret[count++] = this.Substring(index, length - index);
@@ -804,8 +805,8 @@ public unsafe struct StringView: IEnumerable<char>, IEquatable<String>, IEquatab
         int nonEmpty = (v0.length != 0 ? 1 : 0) + (v1.length != 0 ? 2 : 0);
         switch (nonEmpty)
         {
-            case 1:return v0.ToString();
-            case 2:return v1.ToString();
+            case 1: return v0.ToString();
+            case 2: return v1.ToString();
         }
         var ret = FastAllocateString(v0.length + v1.length);
         fixed (char* p = ret, p0 = v0.str, p1 = v1.str)
@@ -910,34 +911,6 @@ public unsafe struct StringView: IEnumerable<char>, IEquatable<String>, IEquatab
     public override string ToString()
     {
         return this.str.Substring(offset, length);
-    }
-
-    public string ToLower()
-    {
-        //TODO
-        throw new NotImplementedException();
-    }
-
-    public string ToUpper()
-    {
-        //TODO
-        throw new NotImplementedException();
-    }
-
-    /// <summary>
-    /// always throw a Exception, because of enumerator's performance is very bad
-    /// avoid using enumerator
-    /// use indexed property instead
-    /// </summary>
-    /// <returns></returns>
-    public IEnumerator<char> GetEnumerator()
-    {
-        throw new Exception("Avoid using Enumerator, it gets a very bad performance. use the indexed property instead");
-    }
-
-    IEnumerator IEnumerable.GetEnumerator()
-    {
-        throw new Exception("Avoid using Enumerator, it gets a very bad performance. use the indexed property instead");
     }
 
     /// <summary>
